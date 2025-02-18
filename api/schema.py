@@ -1,5 +1,7 @@
 import graphene
+from django.core.files.storage import default_storage
 from graphene_django import DjangoObjectType
+from graphene_file_upload.scalars import Upload
 
 from api.models import Author, Book, Publisher
 
@@ -25,6 +27,17 @@ class PublisherType(DjangoObjectType):
         fields = "__all__"
 
 
+class UploadFileMutation(graphene.Mutation):
+    class Arguments:
+        file = Upload(required=True)
+
+    success = graphene.Boolean()
+
+    def mutate(self, info, file, **kwargs):
+        file_name = default_storage.save(file.name, file)
+        return UploadFileMutation(success=True)
+
+
 class Query(graphene.ObjectType):
     book_list = graphene.List(BookType)
     book = graphene.Field(BookType, id=graphene.ID(required=True))
@@ -38,4 +51,8 @@ class Query(graphene.ObjectType):
         return Book.objects.filter(id=id).first()
 
 
-schema = graphene.Schema(query=Query)
+class Mutate(graphene.ObjectType):
+    upload_file = UploadFileMutation.Field()
+
+
+schema = graphene.Schema(query=Query, mutation=Mutate)
